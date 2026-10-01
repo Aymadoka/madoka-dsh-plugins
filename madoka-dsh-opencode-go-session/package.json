@@ -1,0 +1,40 @@
+{
+  "name": "madoka-dsh-opencode-go-session",
+  "version": "0.1.2",
+  "description": "DeepSeek Harness plugin for OpenCode Go only: attaches a stable per-conversation x-opencode-session header (fixes 400 MissingSessionID) and puts DeepSeek V4.1 Flash first on the opencode-go route.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "files": [
+    "lib",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node tests/test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "opencode-go",
+    "x-opencode-session",
+    "missing-session-id",
+    "session-affinity",
+    "prompt-cache"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
