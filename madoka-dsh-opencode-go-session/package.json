@@ -1,24 +1,44 @@
 {
   "name": "madoka-dsh-opencode-go-session",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "DeepSeek Harness plugin for OpenCode Go only: attaches a stable per-conversation x-opencode-session header (fixes 400 MissingSessionID) and puts DeepSeek V4.1 Flash first on the opencode-go route.",
+  "license": "MIT",
   "type": "module",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
-    ".": "./lib/index.js"
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
-    "lib",
-    "scripts",
     "cordis.patch.yml",
-    "README.md"
+    "lib/**",
+    "scripts",
+    "README.md",
+    "LICENSE"
   ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "engines": {
-    "node": ">=20"
+    "node": "^22.19.0 || >=24.0.0"
   },
   "scripts": {
-    "test": "node tests/test.mjs",
-    "prepublishOnly": "npm test"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
+    "test": "tsc -p tsconfig.tests.json && node .test-out/tests/header.test.js && node .test-out/tests/models.test.js",
+    "check": "npm run build && npm run typecheck && npm run test",
+    "prepack": "npm run check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.9.2"
   },
   "keywords": [
     "dsh",
@@ -30,11 +50,5 @@
     "missing-session-id",
     "session-affinity",
     "prompt-cache"
-  ],
-  "license": "MIT",
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  }
+  ]
 }

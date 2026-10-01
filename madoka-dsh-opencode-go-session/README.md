@@ -18,8 +18,11 @@ dsh plugin --profile web add ./E:/PrivateCode/madoka-dsh-opencode-go-session
 本地开发：
 
 ```sh
-node --check lib/index.js
-npm test
+npm install
+npm run build      # 输出 lib/（含 .d.ts）
+npm run typecheck  # 类型检查（含测试）
+npm test           # 编译测试并用 node:test 运行
+npm run check      # build + typecheck + test
 ```
 
 ## 两个半边，能力不同（务必先读）
