@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "GitHub",
+    "description": "在智能体里直接用 GitHub 官方远端 MCP：仓库、issue、PR 等。Token 从环境变量读取。"
+  }
+}

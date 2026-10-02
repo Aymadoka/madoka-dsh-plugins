@@ -1,0 +1,22 @@
+# GitHub 官方远端 MCP 接入层（新版 hosted server）。
+#
+# 纯配置 bundle：复用宿主自带的 `@deepseek-ai/dsh-mcp-client` 桥接
+# GitHub 托管的远端 MCP 服务器（Streamable HTTP），安装本插件后
+# 模型的工具列表里直接出现 `mcp__github__*` 工具，无需单独安装/配置 MCP。
+# 上游文档见 https://github.com/github/github-mcp-server。
+#
+# 认证：远端服务必须认证。补丁里不存任何明文 token，只用 Loader `!!js`
+# 引用环境变量 GITHUB_PERSONAL_ACCESS_TOKEN（与官方本地版同名）。
+# 没设变量时 `failOnStartupError: true` 会让激活明确报错，而不是静默缺工具。
+# 默认接默认 toolset（context/repos/issues/pull_requests/users）；
+# 换只读把 url 改成 https://api.githubcopilot.com/mcp/readonly 即可。
+- insert:
+    - id: madoka-github-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: github
+        transport: streamable-http
+        url: https://api.githubcopilot.com/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.GITHUB_PERSONAL_ACCESS_TOKEN}`'
+        failOnStartupError: true

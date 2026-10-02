@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "GitHub",
+    "description": "Use the official hosted GitHub MCP server inside the agent: repos, issues, PRs and more. Token comes from an environment variable."
+  }
+}
