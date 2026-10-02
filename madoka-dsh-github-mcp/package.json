@@ -1,6 +1,6 @@
 {
   "name": "madoka-dsh-github-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DSH 插件 — GitHub 官方远端 MCP 开箱即用：安装即连 api.githubcopilot.com，PAT 走环境变量",
   "license": "MIT",
   "type": "module",
@@ -25,12 +25,12 @@
     },
     "client": {
       "platform": "web",
-      "immediately": true,
       "inject": [
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-plugin-manager"
       ]
-    }
+    },
+    "manifestVersion": 1
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

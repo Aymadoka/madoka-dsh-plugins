@@ -132,7 +132,7 @@ describe('cordis.patch.yml', () => {
       main?: unknown
       exports?: Record<string, unknown>
       files?: unknown
-      dsh?: { client?: { platform?: unknown } }
+      dsh?: { client?: { platform?: unknown; immediately?: unknown }; manifestVersion?: unknown }
     }
     assert.equal(manifest.main, './index.js')
     assert.ok(manifest.exports?.['./client'] !== undefined, 'package needs a ./client export')
@@ -141,5 +141,11 @@ describe('cordis.patch.yml', () => {
       'client.js must ship in files',
     )
     assert.equal(manifest.dsh?.client?.platform, 'web')
+    // Without manifestVersion the host ignores dsh.client entirely (the token
+    // form then never mounts — seen live as "该行当前无法配置"). Mirrors the
+    // working third-party bundle dsh-better-sidebar, which also omits the
+    // template-only `immediately` flag.
+    assert.equal(manifest.dsh?.manifestVersion, 1)
+    assert.equal(manifest.dsh?.client?.immediately, undefined)
   })
 })
