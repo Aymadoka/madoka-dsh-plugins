@@ -371,6 +371,8 @@ madoka-dsh-git-check/lib/
 madoka-dsh-git-check/.test-out/
 madoka-dsh-opencode-go-session/lib/
 madoka-dsh-opencode-go-session/.test-out/
+madoka-dsh-microsoft-docs/.test-out/
+madoka-dsh-github-mcp/.test-out/
 *.tsbuildinfo
 coverage/
 .nyc_output/

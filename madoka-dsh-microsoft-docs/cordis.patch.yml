@@ -1,0 +1,21 @@
+# Microsoft Learn MCP 接入层。
+#
+# 纯配置 bundle：复用宿主自带的 `@deepseek-ai/dsh-mcp-client` 桥接官方
+# Microsoft Learn MCP 服务器（Streamable HTTP，免认证），安装本插件后
+# 模型的工具列表里直接出现以下三个工具，无需单独安装/配置 MCP：
+#
+#   mcp__microsoft-docs__microsoft_docs_search
+#   mcp__microsoft-docs__microsoft_docs_fetch
+#   mcp__microsoft-docs__microsoft_code_sample_search
+#
+# 上游端点与工具清单见 https://learn.microsoft.com/en-us/training/support/mcp。
+# 工具列表由服务端下发、可能变化；`failOnStartupError: true` 保证连不上时
+# 明确报错，而不是静默缺工具。
+- insert:
+    - id: madoka-microsoft-docs
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: microsoft-docs
+        transport: streamable-http
+        url: https://learn.microsoft.com/api/mcp
+        failOnStartupError: true

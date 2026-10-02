@@ -1,0 +1,44 @@
+{
+  "name": "madoka-dsh-microsoft-docs",
+  "version": "0.1.0",
+  "description": "DSH 插件 — Microsoft Learn MCP 开箱即用：安装即连官方文档 MCP 服务器，无需单独配置 MCP",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale/*.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node .test-out/tests/validate.test.js",
+    "check": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.9.2",
+    "yaml": "^2.7.0"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "mcp",
+    "microsoft-learn",
+    "docs"
+  ]
+}
