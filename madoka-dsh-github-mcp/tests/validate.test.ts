@@ -86,7 +86,7 @@ describe('cordis.patch.yml', () => {
     }>
     assert.ok(Array.isArray(patch))
     const rows = patch.flatMap((op) => op.insert ?? [])
-    assert.equal(rows.length, 2)
+    assert.equal(rows.length, 1)
     const row = rows.find((r) => r?.id === 'madoka-github-mcp')
     assert.ok(row, 'bridge row madoka-github-mcp must exist')
     assert.equal(row.name, '@deepseek-ai/dsh-mcp-client')
@@ -104,48 +104,5 @@ describe('cordis.patch.yml', () => {
     assert.equal(url.protocol, 'https:')
     assert.ok(config.headers !== undefined, 'remote GitHub MCP requires an Authorization header')
     assert.equal(config.failOnStartupError, true)
-  })
-
-  it('mounts the token config page on its own row', () => {
-    const raw = readFileSync(bundleFile('cordis.patch.yml'), 'utf8')
-    const sanitized = raw.replace(/^(\s*Authorization:\s*)!!js.*$/gm, '$1STUBBED')
-    const patch = parseYaml(sanitized) as Array<{ insert?: Array<{ id?: unknown; name?: unknown }> }>
-    const rows = patch.flatMap((op) => op.insert ?? [])
-    const mount = rows.find((r) => r?.id === 'madoka-github-mcp-config')
-    assert.ok(mount, 'config page mount row must exist')
-    assert.equal(mount.name, 'madoka-dsh-github-mcp')
-
-    const client = readFileSync(bundleFile('client.js'), 'utf8')
-    assert.ok(client.includes('__ModuleLoader__'), 'client.js must use the browser module format')
-    assert.ok(
-      client.includes('madoka-dsh-github-mcp#madoka-github-mcp'),
-      'client.js must target the bridge row config slot',
-    )
-    assert.ok(client.includes('plugins.row.config'), 'client.js must register plugins.row.config')
-    assert.ok(!client.includes('ghp_') && !client.includes('github_pat_'),
-      'client.js must not contain token literals')
-    assert.ok(existsSync(bundleFile('index.js')), 'index.js mount row module must exist')
-  })
-
-  it('declares the browser half in the manifest', () => {
-    const manifest = readJson('package.json') as {
-      main?: unknown
-      exports?: Record<string, unknown>
-      files?: unknown
-      dsh?: { client?: { platform?: unknown; immediately?: unknown }; manifestVersion?: unknown }
-    }
-    assert.equal(manifest.main, './index.js')
-    assert.ok(manifest.exports?.['./client'] !== undefined, 'package needs a ./client export')
-    assert.ok(
-      Array.isArray(manifest.files) && manifest.files.includes('client.js'),
-      'client.js must ship in files',
-    )
-    assert.equal(manifest.dsh?.client?.platform, 'web')
-    // Without manifestVersion the host ignores dsh.client entirely (the token
-    // form then never mounts — seen live as "该行当前无法配置"). Mirrors the
-    // working third-party bundle dsh-better-sidebar, which also omits the
-    // template-only `immediately` flag.
-    assert.equal(manifest.dsh?.manifestVersion, 1)
-    assert.equal(manifest.dsh?.client?.immediately, undefined)
   })
 })

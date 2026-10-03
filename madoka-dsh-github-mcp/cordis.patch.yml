@@ -1,8 +1,8 @@
 # GitHub 官方远端 MCP 接入层（新版 hosted server）。
 #
-# 两行：桥接行复用宿主自带的 `@deepseek-ai/dsh-mcp-client` 连官方远端
-# MCP 服务器（Streamable HTTP），安装后模型直接有 `mcp__github__*` 工具；
-# 配置页行挂载浏览器半侧的 token 表单（client.js），在 DSH 插件页里填 token。
+# 纯配置 bundle：复用宿主自带的 `@deepseek-ai/dsh-mcp-client` 桥接
+# GitHub 托管的远端 MCP 服务器（Streamable HTTP），安装本插件后
+# 模型的工具列表里直接出现 `mcp__github__*` 工具，无需单独安装/配置 MCP。
 # 上游文档见 https://github.com/github/github-mcp-server。
 #
 # 认证：远端服务必须认证。补丁里不存任何明文 token，只用 Loader `!!js`
@@ -10,6 +10,10 @@
 # 没设变量时 `failOnStartupError: true` 会让激活明确报错，而不是静默缺工具。
 # 默认接默认 toolset（context/repos/issues/pull_requests/users）；
 # 换只读把 url 改成 https://api.githubcopilot.com/mcp/readonly 即可。
+#
+# 说明：曾尝试在此 bundle 内加浏览器 token 表单（plugins.row.config），
+# 实测宿主不给桥接行发表单对象（form 恒为 undefined），此路在此版本走不通，
+# 已回退。首 token 走环境变量，详见 README。
 - insert:
     - id: madoka-github-mcp
       name: '@deepseek-ai/dsh-mcp-client'
@@ -20,8 +24,3 @@
         headers:
           Authorization: !!js '`Bearer ${process.env.GITHUB_PERSONAL_ACCESS_TOKEN}`'
         failOnStartupError: true
-    # 配置页挂载点：浏览器半侧（client.js 的 token 表单）挂在包名即本包的行上。
-    # 无 Host 逻辑；token 表单往上一行的 `headers` 写，见 README“在 DSH 里填写 token”。
-    - id: madoka-github-mcp-config
-      name: 'madoka-dsh-github-mcp'
-      config: {}

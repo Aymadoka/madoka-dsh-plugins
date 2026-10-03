@@ -1,20 +1,16 @@
 {
   "name": "madoka-dsh-github-mcp",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "DSH 插件 — GitHub 官方远端 MCP 开箱即用：安装即连 api.githubcopilot.com，PAT 走环境变量",
   "license": "MIT",
   "type": "module",
-  "main": "./index.js",
   "exports": {
-    ".": "./index.js",
-    "./client": "./client.js",
+    ".": "./cordis.patch.yml",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "cordis.patch.yml",
-    "index.js",
-    "client.js",
     "locale/*.json",
     "README.md",
     "LICENSE"
@@ -22,22 +18,14 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-plugin-manager"
-      ]
-    },
-    "manifestVersion": 1
+    }
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --check index.js && node --check client.js && tsc -p tsconfig.json && node .test-out/tests/validate.test.js",
+    "test": "tsc -p tsconfig.json && node .test-out/tests/validate.test.js",
     "check": "npm run typecheck && npm run test"
   },
   "devDependencies": {

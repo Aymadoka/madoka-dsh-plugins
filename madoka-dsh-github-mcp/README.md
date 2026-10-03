@@ -6,33 +6,30 @@
 
 ## 原理
 
-两行结构：
-
-- **桥接行**（`madoka-github-mcp`，模块 `@deepseek-ai/dsh-mcp-client`）：复用宿主自带的 MCP 桥接连远端服务（Streamable HTTP）。默认接默认 toolset（context、repos、issues、pull_requests、users，含远端独占的 Copilot 相关工具）；只想要只读，把 `url` 改成 `https://api.githubcopilot.com/mcp/readonly` 即可。
-- **配置页行**（`madoka-github-mcp-config`，模块 `madoka-dsh-github-mcp`）：只挂载浏览器半侧 `client.js`，在 DSH 插件页的该行上渲染 token 表单。无 Host 逻辑。
+纯配置 bundle，无代码。`cordis.patch.yml` 复用宿主自带的 `@deepseek-ai/dsh-mcp-client` 桥接远端 MCP 服务器（Streamable HTTP）。默认接默认 toolset（context、repos、issues、pull_requests、users，含远端独占的 Copilot 相关工具）；只想要只读，把 `url` 改成 `https://api.githubcopilot.com/mcp/readonly` 即可。
 
 ## 认证
 
-远端服务必须认证，用 PAT（个人访问令牌）。三种方式，**任选其一**，优先级从高到低：
+远端服务必须认证，用 PAT（个人访问令牌）。两种方式，**任选其一**：
 
-### 方式一：在 DSH 里填写（推荐日常使用）
-
-安装后打开 DSH 侧栏 **插件** 页 → 找到本插件 → 展开的 `madoka-github-mcp` 行 → **配置** → 粘贴 token → **保存**。表单只写该行的 `headers.Authorization`，保存后 GitHub 工具会用新 token 重连；**已保存的 token 不会再回显**，页面只显示「已配置 / 未配置」。旁边的**移除 token** 会删掉该字段，回退到方式二。
-
-> 该 token 以**明文**存放在你 profile 的 `cordis.patch.yml` 里。共用机器或对磁盘明文敏感时，请改用方式二。
-
-### 方式二：环境变量
+### 方式一：环境变量（推荐）
 
 `Authorization` 默认用 Loader `!!js` 引用环境变量，token 不落盘：
 
 1. 去 [新建 fine-grained PAT](https://github.com/settings/personal-access-tokens/new)，按需给权限（只读：Contents / Issues / Pull requests 选 Read-only；要开 issue、提 PR、推文件则给 Read and write），建议只勾你会让模型碰的仓库。
-2. Windows 持久化（新开进程生效）：
+2. Windows 持久化（新开进程生效），两种写法任选其一：
    ```powershell
    setx GITHUB_PERSONAL_ACCESS_TOKEN "github_pat_..."
+   # 或 PowerShell 原生写法（作用相同：写入 User 级环境变量）：
+   [Environment]::SetEnvironmentVariable('GITHUB_PERSONAL_ACCESS_TOKEN', 'github_pat_...', 'User')
    ```
-3. 完全重启 DSH Desktop（环境变量是启动时读的）。
+   验证是否写成功（会打印值，请勿外传）：
+   ```powershell
+   [Environment]::GetEnvironmentVariable('GITHUB_PERSONAL_ACCESS_TOKEN', 'User')
+   ```
+3. 完全重启 DSH Desktop（环境变量是启动时读的；托盘退出、确认无残留进程后从开始菜单重开，应用内重启不更新 OS 环境）。
 
-### 方式三：profile 覆盖行
+### 方式二：profile 覆盖行
 
 在你自己的 profile 补丁里加一行**同 id 覆盖行**。按 Loader 规则，同 id 的覆盖行会**整体替换**本插件默认行的 `config`，因此覆盖行里要写完整配置：
 
@@ -48,9 +45,11 @@
     failOnStartupError: true
 ```
 
-**优先级**：DSH 界面填写/覆盖行 > 环境变量 > 都没有（`failOnStartupError: true` 会明确报错，而不是静默缺工具）。
+**优先级**：覆盖行 > 环境变量 > 都没有（`failOnStartupError: true` 会明确报错，而不是静默缺工具）。
 
-注意：同一行里不能写 `config.token` 这类“自己引用自己”的 `!!js`——Loader 的 `!!js` 在 Loader 作用域求值，看不到本行 config；桥接的 schema 也会丢弃未知字段。界面表单和跨行覆盖才是正道。
+注意：同一行里不能写 `config.token` 这类“自己引用自己”的 `!!js`——Loader 的 `!!js` 在 Loader 作用域求值，看不到本行 config；桥接的 schema 也会丢弃未知字段。跨行覆盖才是正道。
+
+> 说明：曾尝试在此 bundle 内加浏览器 token 表单（`plugins.row.config`），实测宿主不给桥接行发表单对象（`form` 恒为 `undefined`），此路在此版本走不通，已回退。首 token 走环境变量。
 
 ## 安装
 
