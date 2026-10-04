@@ -1,8 +1,17 @@
 {
   "name": "madoka-dsh-microsoft-docs",
-  "version": "0.1.0",
-  "description": "DSH 插件 — Microsoft Learn MCP 开箱即用：安装即连官方文档 MCP 服务器，无需单独配置 MCP",
+  "version": "0.3.0",
+  "description": "DSH 插件 — Microsoft Learn MCP 开箱即用：安装即连官方文档 MCP 服务器，无需单独配置 MCP。Out-of-the-box Microsoft Learn MCP for DSH: search and fetch official docs with zero MCP setup.",
   "license": "MIT",
+  "homepage": "https://github.com/Aymadoka/madoka-dsh-plugins/tree/main/madoka-dsh-microsoft-docs#readme",
+  "bugs": {
+    "url": "https://github.com/Aymadoka/madoka-dsh-plugins/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aymadoka/madoka-dsh-plugins.git",
+    "directory": "madoka-dsh-microsoft-docs"
+  },
   "type": "module",
   "exports": {
     ".": "./cordis.patch.yml",

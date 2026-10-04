@@ -1,8 +1,17 @@
 {
   "name": "madoka-dsh-github-mcp",
-  "version": "0.2.3",
-  "description": "DSH 插件 — GitHub 官方远端 MCP 开箱即用：安装即连 api.githubcopilot.com，PAT 走环境变量",
+  "version": "0.3.0",
+  "description": "DSH 插件 — GitHub 官方远端 MCP 开箱即用：安装即连 api.githubcopilot.com，PAT 走环境变量。Out-of-the-box hosted GitHub MCP for DSH: connects to api.githubcopilot.com on install, PAT via environment variable.",
   "license": "MIT",
+  "homepage": "https://github.com/Aymadoka/madoka-dsh-plugins/tree/main/madoka-dsh-github-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Aymadoka/madoka-dsh-plugins/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aymadoka/madoka-dsh-plugins.git",
+    "directory": "madoka-dsh-github-mcp"
+  },
   "type": "module",
   "exports": {
     ".": "./cordis.patch.yml",

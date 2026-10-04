@@ -1,0 +1,27 @@
+{
+  "name": "madoka-dsh-plugins",
+  "version": "0.3.0",
+  "private": true,
+  "description": "DeepSeek Harness plugin suite: git workflow, OpenCode session, Microsoft Docs MCP and GitHub MCP. Single lockstep version; see README.md.",
+  "type": "module",
+  "workspaces": [
+    "madoka-dsh-git-check",
+    "madoka-dsh-opencode-go-session",
+    "madoka-dsh-microsoft-docs",
+    "madoka-dsh-github-mcp"
+  ],
+  "scripts": {
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "precheck": "npm run version:check",
+    "version:check": "node scripts/sync-versions.mjs check",
+    "version:sync": "node scripts/sync-versions.mjs sync",
+    "version:bump": "node scripts/sync-versions.mjs bump"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "license": "MIT"
+}

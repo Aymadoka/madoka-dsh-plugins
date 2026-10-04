@@ -1,8 +1,17 @@
 {
   "name": "madoka-dsh-opencode-go-session",
-  "version": "0.2.0",
-  "description": "DeepSeek Harness plugin for OpenCode Go only: attaches a stable per-conversation x-opencode-session header (fixes 400 MissingSessionID) and puts DeepSeek V4.1 Flash first on the opencode-go route.",
+  "version": "0.3.0",
+  "description": "DeepSeek Harness plugin for OpenCode Go only: attaches a stable per-conversation x-opencode-session header (fixes 400 MissingSessionID). 仅面向 OpenCode Go：自动附加稳定的每会话请求头。",
   "license": "MIT",
+  "homepage": "https://github.com/Aymadoka/madoka-dsh-plugins/tree/main/madoka-dsh-opencode-go-session#readme",
+  "bugs": {
+    "url": "https://github.com/Aymadoka/madoka-dsh-plugins/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aymadoka/madoka-dsh-plugins.git",
+    "directory": "madoka-dsh-opencode-go-session"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -17,7 +26,6 @@
   "files": [
     "cordis.patch.yml",
     "lib/**",
-    "scripts",
     "README.md",
     "LICENSE"
   ],
@@ -32,7 +40,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
-    "test": "tsc -p tsconfig.tests.json && node .test-out/tests/header.test.js && node .test-out/tests/models.test.js",
+    "test": "tsc -p tsconfig.tests.json && node .test-out/tests/header.test.js",
     "check": "npm run build && npm run typecheck && npm run test",
     "prepack": "npm run check"
   },

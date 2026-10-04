@@ -40,7 +40,7 @@
 ### 发布后（npm）
 
 ```bash
-dsh plugin add madoka-dsh-git-check
+dsh plugin --profile <你的profile> add madoka-dsh-git-check
 ```
 
 在 DSH-Desktop 中，也可以通过桌面端的插件管理界面安装（待插件市场收录）。

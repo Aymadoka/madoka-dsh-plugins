@@ -377,4 +377,6 @@ madoka-dsh-github-mcp/.test-out/
 coverage/
 .nyc_output/
 dist/
+# Lockfiles are all ignored in this workspace (root included):
+# installs are reproduced with `npm install` per pinned ranges.
 **/package-lock.json

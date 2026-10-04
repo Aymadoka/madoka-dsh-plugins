@@ -1,33 +1,22 @@
 // madoka-dsh-opencode-go-session
 //
-// Host plugin, OpenCode Go only. Two jobs:
+// Host plugin, OpenCode Go only. One job:
 //
-//   1. ATTACH `x-opencode-session` (header half): OpenCode's relay pins every
-//      request sharing the same `x-opencode-session` value to the same upstream
-//      backend, keeping its prompt cache warm across the turns of one
-//      conversation. Fixes 400 MissingSessionID. Default mode is `session-id`
-//      (same as dsh-opencode-session): reuse the DSH session id that already
-//      travels with each model call.
-//
-//   2. PUT DEEPSEEK V4.1 FIRST (settings half): once the `llm-pi-ai` settings
-//      namespace is registered, detect the opencode-go catalog from the engine
-//      itself (`llm.discoverModels`, no network for a catalog route) and place
-//      `deepseek-v4.1-flash` at the FRONT of the route's `models` list via
-//      settings.update. Seeds the list from the detected catalog when the user
-//      configured none, and declares the route's baseURL when a listed model is
-//      not in the catalog. No compat patching by design (flash only).
+//   ATTACH `x-opencode-session`: OpenCode's relay pins every
+//   request sharing the same `x-opencode-session` value to the same upstream
+//   backend, keeping its prompt cache warm across the turns of one
+//   conversation. Fixes 400 MissingSessionID. Default mode is `session-id`
+//   (same as dsh-opencode-session): reuse the DSH session id that already
+//   travels with each model call.
 
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import { appendFile } from 'node:fs/promises'
-import { setTimeout as sleep } from 'node:timers/promises'
 
 export const name = 'madoka-opencode-go-session'
 
 // Activate only after the abstract `llm` service exists, so the waterfall
 // event the header half listens on is already registered by its provider.
-// `settings` is injected lazily in apply() so a profile without settings
-// still gets the header fix.
 export const inject = ['llm']
 
 // ---------------------------------------------------------------------------
@@ -42,35 +31,17 @@ export interface PluginLogger {
   error(message: string, ...args: unknown[]): void
 }
 
-export interface LlmService {
-  discoverModels?(ns: string, filter?: unknown): Promise<unknown>
-}
-
-export interface PluginSettings {
-  describe?(): unknown
-  get?(ns: string): unknown
-  section?(ns: string): unknown
-  update?(ns: string, value: unknown): unknown
-}
-
 export interface PluginContext {
   logger: PluginLogger
   effect(fn: () => unknown, label?: string): unknown
   on(event: string, listener: (...args: any[]) => any, options?: { prepend?: boolean }): () => void
   inject?(deps: string[], setup: (ctx: PluginContext) => void): void
-  llm?: LlmService
-  settings?: PluginSettings
 }
 
 function toRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : undefined
-}
-
-function modelIdOf(value: unknown): string | undefined {
-  const id = toRecord(value)?.['id']
-  return typeof id === 'string' ? id : undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -94,17 +65,6 @@ export interface PluginConfig {
 
 export interface StoreState {
   value: string
-}
-
-export interface ModelLike {
-  id: string
-  [key: string]: unknown
-}
-
-export interface ModelDef extends ModelLike {
-  name: string
-  contextWindow: number
-  maxTokens: number
 }
 
 function resolveConfig(config: unknown = {}): PluginConfig {
@@ -293,213 +253,8 @@ function installSessionHeader(ctx: PluginContext, config: unknown): void {
   }, { prepend: true })
 }
 
-// ---------------------------------------------------------------------------
-// DeepSeek V4.1 auto-add half (opencode-go only, flash first, no compat)
-// ---------------------------------------------------------------------------
-
-const NS = 'llm-pi-ai'
-const PROVIDER = 'opencode-go'
-
-// OpenCode Go's OpenAI-compatible endpoint.
-const DEFAULT_BASE_URL = 'https://opencode.ai/zen/go/v1'
-
-// Only Flash, no compat block by design (per confirmed scheme).
-export const V4_1_MODELS: ModelDef[] = [
-  {
-    id: 'deepseek-v4.1-flash',
-    name: 'DeepSeek V4.1 Flash',
-    contextWindow: 1000000,
-    maxTokens: 384000,
-  },
-]
-
-const NS_WAIT_TIMEOUT_MS = 10000
-const NS_WAIT_STEP_MS = 100
-
-export interface RoutePatch {
-  models?: ModelLike[]
-  baseURL?: string
-}
-
-/**
- * The next models array with V4.1 Flash FIRST, user entries kept in order.
- * Returns null when already in shape (so callers skip the write).
- */
-export function withV41ModelsFirst(existing: unknown): ModelLike[] | null {
-  const models: unknown[] = Array.isArray(existing) ? existing : []
-  const ours = V4_1_MODELS.map((def) => {
-    const found = models.find((m) => modelIdOf(m) === def.id)
-    // Keep the user's own entry verbatim (name/limits they tuned win).
-    return found !== undefined ? found : { ...def }
-  })
-  const rest = models.filter((m) => !V4_1_MODELS.some((def) => def.id === modelIdOf(m)))
-  const next = [...ours, ...rest]
-  return JSON.stringify(next) === JSON.stringify(models) ? null : (next as ModelLike[])
-}
-
-/**
- * The patch to write for the `opencode-go` route, or null when in shape.
- */
-export function planRouteUpdate(
-  userProfile: unknown,
-  resolvedRoute: unknown,
-  catalog: unknown,
-): RoutePatch | null {
-  if (!Array.isArray(catalog)) return null
-  const detected: ModelLike[] = catalog
-    .filter((model) => {
-      const id = modelIdOf(model)
-      return id !== undefined && id.length > 0
-    })
-    .map((model) => model as ModelLike)
-  const catalogIds = new Set(detected.map((model) => model.id))
-  const stored: unknown = toRecord(userProfile)?.['models']
-  const userConfigured = Array.isArray(stored) && stored.length > 0
-
-  const listed: unknown[] = userConfigured
-    ? (stored as unknown[])
-    : detected.map((model) => (
-      typeof model.name === 'string' && model.name.length > 0
-        ? { id: model.id, name: model.name }
-        : { id: model.id }
-    ))
-  const merged = withV41ModelsFirst(listed)
-  const models = (merged ?? listed) as ModelLike[]
-
-  const patch: RoutePatch = {}
-  if (merged !== null) patch.models = models
-  if (((toRecord(resolvedRoute)?.['baseURL'] as string | undefined) ?? '') === ''
-    && models.some((model) => !catalogIds.has(model?.id))) {
-    patch.baseURL = DEFAULT_BASE_URL
-  }
-  return Object.keys(patch).length > 0 ? patch : null
-}
-
-async function detectCatalogModels(ctx: PluginContext): Promise<ModelLike[] | undefined> {
-  const llm = ctx.llm
-  if (typeof llm?.discoverModels !== 'function') {
-    ctx.logger?.warn('[opencode-go] llm.discoverModels() is unavailable; skipping the V4.1 auto-add')
-    return undefined
-  }
-  try {
-    const models: unknown = await llm.discoverModels(NS, { provider: PROVIDER })
-    if (!Array.isArray(models)) return undefined
-    return models.filter((model) => {
-      const id = modelIdOf(model)
-      return id !== undefined && id.length > 0
-    })
-  } catch (error) {
-    ctx.logger?.warn(
-      '[opencode-go] could not detect the "%s" model catalog: %s',
-      PROVIDER,
-      error instanceof Error ? error.message : String(error),
-    )
-    return undefined
-  }
-}
-
-async function waitForNamespace(settings: PluginSettings): Promise<boolean> {
-  const deadline = Date.now() + NS_WAIT_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    try {
-      const desc: unknown = settings.describe?.()
-      if (Array.isArray(desc) && desc.some((d) => toRecord(d)?.['ns'] === NS)) return true
-    } catch {
-      // not yet readable; keep polling
-    }
-    await sleep(NS_WAIT_STEP_MS)
-  }
-  return false
-}
-
-async function ensureV41Models(ctx: PluginContext, settings: PluginSettings): Promise<void> {
-  const catalog = await detectCatalogModels(ctx)
-  if (catalog === undefined) return
-
-  let resolved: unknown
-  try {
-    resolved = settings.get?.(NS)
-  } catch {
-    return
-  }
-  const route = toRecord(toRecord(resolved)?.['providers'])?.[PROVIDER]
-  if (route === undefined) return
-
-  let userSection: unknown
-  try {
-    if (typeof settings.section !== 'function') {
-      ctx.logger?.warn('[opencode-go] settings.section() is unavailable; skipping the V4.1 auto-add')
-      return
-    }
-    userSection = settings.section(NS)
-  } catch (error) {
-    ctx.logger?.warn(
-      '[opencode-go] reading the user settings section failed: %s',
-      error instanceof Error ? error.message : String(error),
-    )
-    userSection = undefined
-  }
-
-  const userProviders = toRecord(toRecord(userSection)?.['providers'])
-  const patch = planRouteUpdate(userProviders?.[PROVIDER], route, catalog)
-  if (patch === null) return
-
-  ctx.logger.info(
-    '[opencode-go] detected %d "%s" model(s); putting %s first%s',
-    catalog.length,
-    PROVIDER,
-    V4_1_MODELS.map((m) => m.id).join(', '),
-    patch.baseURL === undefined ? '' : ` and declaring baseURL ${patch.baseURL}`,
-  )
-  await settings.update?.(NS, { providers: { [PROVIDER]: patch } })
-}
-
-function installAutoModels(ctx: PluginContext): void {
-  const settings = ctx.settings
-  if (settings === undefined) return
-  let ensureChain: Promise<void> = Promise.resolve()
-
-  const ensure = (): void => {
-    ensureChain = ensureChain
-      .then(() => ensureV41Models(ctx, settings))
-      .catch((error) => {
-        ctx.logger?.warn('[opencode-go] auto-add failed: %s', error?.message ?? String(error))
-      })
-  }
-
-  ctx.effect(() => {
-    const started = (async (): Promise<void> => {
-      const ready = await waitForNamespace(settings)
-      if (!ready) {
-        ctx.logger?.warn(
-          '[opencode-go] llm-pi-ai settings namespace not seen within %dms; skipping auto-add',
-          NS_WAIT_TIMEOUT_MS,
-        )
-        return
-      }
-      ensure()
-    })()
-
-    const off = ctx.on('settings/document-updated', (ns) => {
-      if (ns === NS) ensure()
-    })
-
-    return async (): Promise<void> => {
-      off()
-      await started
-      await ensureChain
-    }
-  }, 'opencode-go.ensure-models')
-}
-
 export function apply(ctx: PluginContext, config?: unknown): void {
   installSessionHeader(ctx, config)
-  // Lazy: keeps the header half working in profiles with no settings provider.
-  if (typeof ctx.inject === 'function') {
-    ctx.inject(['settings'], (settingsCtx) => installAutoModels(settingsCtx))
-  } else if (ctx.settings) {
-    installAutoModels(ctx)
-  }
 }
 
 export default { name, inject, apply }
