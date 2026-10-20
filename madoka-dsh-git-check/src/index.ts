@@ -4,7 +4,8 @@ import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-tools'
-import { defineTool, type ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { defineTool } from '@deepseek-ai/dsh-tools'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import {
   runPreCommitChecks,
@@ -14,6 +15,8 @@ import { executeCommit } from './lib/commit.js'
 import { scanWorkingTree, formatScanReport } from './lib/scanner.js'
 import { stageFiles, stageAll } from './lib/stage.js'
 import { scanForIgnore, formatIgnoreScanReport, writeGitignore } from './lib/ignore.js'
+import { generateCommitMessage } from './lib/commitMessage.js'
+import { formatCommitMessageReport, runCommitMessage } from './lib/pipeline.js'
 import type { CommandRunner, CommandResult, HarnessFs } from './lib/seams.js'
 import { resolveWorkdir } from './lib/seams.js'
 import {
@@ -28,10 +31,19 @@ export const name = 'madoka-dsh-git-check'
  * 声明依赖的官方 DSH contract：工具注册、人类命令、子进程执行、
  * 沙箱感知文件系统。`sandboxPolicy` 按需经 `ctx.get()` 读取（不清零注入），
  * 仅在文件系统声明约束模式时要求其存在。
+ * `llm` 同样按需读取（见 `commitMessage.ts`）：原有 6 个工具不依赖模型服务，
+ * 把它放进 `inject` 会让整个插件在没有 LLM 的部署里一起失效。
  */
 export const inject = ['tools', 'commands', 'subprocess', 'fs']
 
-type ToolExecContext = ToolRunContext
+/**
+ * 工具调用与斜杠命令共用的执行接缝：两条入口都提供 agent 与取消信号。
+ * `Agent` 带来会话 cwd、模型路由与会话身份，命令入口与工具入口因此共用同一实现。
+ */
+interface ExecSeam {
+  agent?: Agent | undefined
+  signal: AbortSignal
+}
 
 const STDOUT_MAX_BYTES = 8 * 1024 * 1024
 const STDERR_MAX_BYTES = 256 * 1024
@@ -65,8 +77,8 @@ const STRING_OUTPUT = {
  * 跨平台（Windows / macOS / Linux）行为一致；非零退出是正常返回值，
  * 仅在进程无法启动或被取消/超时时抛错。
  */
-function createRunner(ctx: Context, exec: ToolExecContext): CommandRunner {
-  const workdir = exec.agent?.session.header.cwd ?? process.cwd()
+function createRunner(ctx: Context, exec: ExecSeam): CommandRunner {
+  const workdir = resolveWorkdir(undefined, exec)
   return {
     workdir,
     run: async (argv: readonly string[], options?: { cwd?: string }): Promise<CommandResult> => {
@@ -112,7 +124,7 @@ function createRunner(ctx: Context, exec: ToolExecContext): CommandRunner {
   }
 }
 
-function resolveSandboxPolicy(ctx: Context, exec: ToolExecContext) {
+function resolveSandboxPolicy(ctx: Context, exec: ExecSeam) {
   if (ctx.fs.sandboxMode === undefined) return undefined
   const policy = ctx.get('sandboxPolicy')
   if (policy === undefined) {
@@ -126,7 +138,7 @@ function resolveSandboxPolicy(ctx: Context, exec: ToolExecContext) {
  * 经 `ctx.fs` 适配文件读写：走沙箱裁决与读写观测（`fs/observed`），
  * 与 `str_replace_editor` 等第一方工具保持同一可观测性。
  */
-function createHarnessFs(ctx: Context, exec: ToolExecContext): HarnessFs {
+function createHarnessFs(ctx: Context, exec: ExecSeam): HarnessFs {
   return {
     readFileIfPresent: async (absPath: string): Promise<string | undefined> => {
       const target = await ctx.fs.resolve(absPath, { signal: exec.signal })
@@ -262,6 +274,42 @@ export function apply(ctx: Context): void {
   }))
 
   ctx.tools.register(defineTool({
+    name: 'commit_message_generate',
+    description: '根据暂存区（优先）或工作区的改动，用当前会话的模型生成一条提交信息。复刻 Trae 的「生成提交内容」：暂存区非空只取暂存区，未跟踪文件合成 patch，单文件 diff 超 50000 字符丢弃、总量超 500000 字符截断；项目规则读仓库根 AGENTS.md。只返回文本，不暂存、不提交。',
+    parameters: {
+      workdir: { type: 'string', description: WORKDIR_DESCRIPTION },
+      language: {
+        type: 'string',
+        enum: ['auto', 'zh', 'en'],
+        description: "提交信息语言：'auto' 跟随 AGENTS.md 的语言（默认），'zh' 固定中文，'en' 固定英文。",
+      },
+      extra_instruction: {
+        type: 'string',
+        description: '追加给模型的额外要求，例如「scope 用 api」。最多 1000 字符。',
+      },
+    },
+    output: { ...STRING_OUTPUT },
+    async execute(args, exec) {
+      const runner = createRunner(ctx, exec)
+      const fs = createHarnessFs(ctx, exec)
+      const worktree = resolveWorkdir(args.workdir, exec)
+      const report = await runCommitMessage(
+        {
+          runner,
+          fs,
+          generate: (input) => generateCommitMessage(ctx, exec, input),
+        },
+        {
+          workdir: worktree,
+          ...(args.language === undefined ? {} : { language: args.language }),
+          ...(args.extra_instruction === undefined ? {} : { extraInstruction: args.extra_instruction }),
+        },
+      )
+      return textResult(formatCommitMessageReport(report))
+    },
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'gitignore_scan',
     description: '扫描项目结构，分析应添加到 .gitignore 的文件和目录。自动检测语言/框架（Node.js、Python、Rust、Go、Java 等）、编辑器配置、AI 工具产物、构建输出、系统文件等，返回当前 .gitignore 状态和建议新增的忽略规则。',
     parameters: {
@@ -323,6 +371,36 @@ export function apply(ctx: Context): void {
       return {
         kind: 'success' as const,
         text: 'English one-click commit workflow injected: scan, classify, stage, check, review, then commit locally (no push).',
+      }
+    },
+  })
+
+  ctx.commands.register({
+    name: 'commit-msg',
+    description: '根据暂存区/工作区改动生成提交信息（只生成文本，不暂存不提交）',
+    input: { hint: '[额外指示]' },
+    handler: async (invocation) => {
+      const target = { agent: invocation.agent, signal: invocation.signal }
+      const runner = createRunner(ctx, target)
+      const fs = createHarnessFs(ctx, target)
+      const worktree = resolveWorkdir(undefined, target)
+      const extraInstruction = invocation.rawInput.trim()
+      try {
+        const report = await runCommitMessage(
+          {
+            runner,
+            fs,
+            generate: (input) => generateCommitMessage(ctx, target, input),
+          },
+          {
+            workdir: worktree,
+            ...(extraInstruction.length === 0 ? {} : { extraInstruction }),
+          },
+        )
+        return { kind: 'success' as const, text: formatCommitMessageReport(report) }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        return { kind: 'error' as const, text: `生成提交信息失败：${reason}` }
       }
     },
   })

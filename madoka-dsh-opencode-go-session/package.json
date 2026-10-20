@@ -1,6 +1,6 @@
 {
   "name": "madoka-dsh-opencode-go-session",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DeepSeek Harness plugin for OpenCode Go only: attaches a stable per-conversation x-opencode-session header (fixes 400 MissingSessionID). 仅面向 OpenCode Go：自动附加稳定的每会话请求头。",
   "license": "MIT",
   "homepage": "https://github.com/Aymadoka/madoka-dsh-plugins/tree/main/madoka-dsh-opencode-go-session#readme",

@@ -1,6 +1,6 @@
 {
   "name": "madoka-dsh-plugins",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "DeepSeek Harness plugin suite: git workflow, OpenCode session, Microsoft Docs MCP and GitHub MCP. Single lockstep version; see README.md.",
   "type": "module",

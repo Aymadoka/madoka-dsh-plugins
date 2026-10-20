@@ -4,7 +4,7 @@ DeepSeek Harness 插件套件（monorepo，同节奏发布）：
 
 | 插件 | 说明 |
 |---|---|
-| [madoka-dsh-git-check](madoka-dsh-git-check/) | 一键扫描、分类、审查并提交代码 |
+| [madoka-dsh-git-check](madoka-dsh-git-check/) | 一键扫描、分类、审查、生成提交信息并提交代码 |
 | [madoka-dsh-opencode-go-session](madoka-dsh-opencode-go-session/) | OpenCode Go 会话亲和（x-opencode-session 请求头） |
 | [madoka-dsh-microsoft-docs](madoka-dsh-microsoft-docs/) | Microsoft Learn MCP 开箱即用 |
 | [madoka-dsh-github-mcp](madoka-dsh-github-mcp/) | GitHub 官方远端 MCP 开箱即用 |
